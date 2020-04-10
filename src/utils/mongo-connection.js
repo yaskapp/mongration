@@ -22,7 +22,7 @@ function MongoConnection(config){
 MongoConnection.prototype.connect = function(cb){
     MongoClient.connect(this.connectionUri || this.getConnectionUri(), (err, client) => {
         if(err) return cb(err);
-        cb(null, client.db(this.db));
+        cb(null, client.db(this.db), client);
     });
 }
 
