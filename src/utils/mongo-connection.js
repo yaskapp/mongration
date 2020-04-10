@@ -20,7 +20,10 @@ function MongoConnection(config){
 }
 
 MongoConnection.prototype.connect = function(cb){
-    MongoClient.connect(this.connectionUri || this.getConnectionUri(), (err, client) => {
+    MongoClient.connect(this.connectionUri || this.getConnectionUri(), {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    }, (err, client) => {
         if(err) return cb(err);
         cb(null, client.db(this.db), client);
     });
