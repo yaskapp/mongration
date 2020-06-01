@@ -181,8 +181,8 @@ Migration.prototype.migrate = function(doneCb) {
 };
 
 Migration.prototype.rollback = async function(doneCb) {
-    var callback = function(err) {
-        var resp = this.steps.map(function(step) {
+    const callback = function(err) {
+        const resp = this.steps.map(function(step) {
             return {
                 id: step.id,
                 status: step.status
@@ -199,42 +199,51 @@ Migration.prototype.rollback = async function(doneCb) {
         this.steps.push(_step);
     }.bind(this));
 
-    new MongoConnection(this.dbConfig).connect(function(err, db, client) {
+    new MongoConnection(this.dbConfig).connect(async function(err, db, client) {
         assert.equal(err, null);
         this.db = db;
         this.client = client;
 
-        async.series(
-            this.steps.map(function(step) {
-                return function(cb) {
-                    this.db.collection(this.collection).deleteOne({ id: step.id }, function(err, result) {
-                        if (err) {
-                            step.status = statuses.rollbackError;
-                            return cb('[' + step.id + '] failed to remove migration version: ' + err);
-                        }
+        const lastStep = await this.db.collection(this.collection).findOne({}, {sort: {'order': -1}})
 
-                        if (result.deletedCount === 0) {
-                            step.status = statuses.rollbackError;
-                            return cb('[' + step.id + '] failed to remove migration version: No such version.');
-                        }
+        if( !lastStep ) {
+            return callback.call(this, new Error('No steps in database.'));
+        }
 
-                        step.down(this.db, function(err) {
-                                if (err) {
-                                    step.status = statuses.rollbackError;
-                                    return cb('[' + step.id + '] unable to rollback migration: ' + err);
-                                }
+        const step = this.steps.find(step => {
+            return step.id === lastStep.id;
+        });
 
-                                if (step.status === statuses.ok) {
-                                    step.status = statuses.rollback;
-                                }
-                                cb();
-                            }.bind(this)
-                        );
-                    }.bind(this));
-                }.bind(this);
-            }.bind(this)),
+        if (!step) {
+            return callback.call(this, new Error(`Step ${step.id} not found.`));
+        }
+
+        this.db.collection(this.collection).deleteOne({ id: step.id }, function(err, result) {
+            if (err) {
+                step.status = statuses.rollbackError;
+                return cb('[' + step.id + '] failed to remove migration version: ' + err);
+            }
+
+            if (result.deletedCount === 0) {
+                step.status = statuses.rollbackError;
+                return cb('[' + step.id + '] failed to remove migration version: No such version.');
+            }
+
+            step.down(this.db, function(err) {
+                    if (err) {
+                        step.status = statuses.rollbackError;
+                        return cb('[' + step.id + '] unable to rollback migration: ' + err);
+                    }
+
+                    if (step.status === statuses.ok) {
+                        step.status = statuses.rollback;
+                    }
+                    cb();
+                }.bind(this)
+            );
+        }.bind(this));
+
             callback.bind(this)
-        );
     }.bind(this));
 };
 
