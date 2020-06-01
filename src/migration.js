@@ -154,7 +154,7 @@ Migration.prototype.migrate = function(doneCb) {
                                     return cb('[' + step.id + '] unable to complete migration: ' + err);
                                 }
 
-                                this.db.collection(this.collection).insert(new StepVersionCollection(step.id, step.checksum, step.order, new Date()), function(err) {
+                                this.db.collection(this.collection).insertOne(new StepVersionCollection(step.id, step.checksum, step.order, new Date()), function(err) {
                                     if (err) {
                                         step.status = statuses.error;
                                         return cb('[' + step.id + '] failed to save migration version: ' + err);
@@ -195,7 +195,7 @@ Migration.prototype.rollback = async function(doneCb) {
     this.migrationFiles.forEach(function(path, index) {
         var _step = new StepFileReader(path).read().getStep();
         _step.order = index;
-        _step.status = statuses.ok;
+        _step.status = statuses.skipped;
         this.steps.push(_step);
     }.bind(this));
 
@@ -235,9 +235,7 @@ Migration.prototype.rollback = async function(doneCb) {
                     return callback.call(this, '[' + step.id + '] unable to rollback migration: ' + err);
                 }
 
-                if (step.status === statuses.ok) {
-                    step.status = statuses.rollback;
-                }
+                step.status = statuses.rollback;
 
                 callback.call(this);
 
