@@ -221,29 +221,28 @@ Migration.prototype.rollback = async function(doneCb) {
         this.db.collection(this.collection).deleteOne({ id: step.id }, function(err, result) {
             if (err) {
                 step.status = statuses.rollbackError;
-                return cb('[' + step.id + '] failed to remove migration version: ' + err);
+                return callback.call(this, '[' + step.id + '] failed to remove migration version: ' + err);
             }
 
             if (result.deletedCount === 0) {
                 step.status = statuses.rollbackError;
-                return cb('[' + step.id + '] failed to remove migration version: No such version.');
+                return callback.call(this, '[' + step.id + '] failed to remove migration version: No such version.');
             }
 
             step.down(this.db, function(err) {
-                    if (err) {
-                        step.status = statuses.rollbackError;
-                        return cb('[' + step.id + '] unable to rollback migration: ' + err);
-                    }
+                if (err) {
+                    step.status = statuses.rollbackError;
+                    return callback.call(this, '[' + step.id + '] unable to rollback migration: ' + err);
+                }
 
-                    if (step.status === statuses.ok) {
-                        step.status = statuses.rollback;
-                    }
-                    cb();
-                }.bind(this)
-            );
+                if (step.status === statuses.ok) {
+                    step.status = statuses.rollback;
+                }
+
+                callback.call(this);
+
+            }.bind(this));
         }.bind(this));
-
-            callback.bind(this)
     }.bind(this));
 };
 
