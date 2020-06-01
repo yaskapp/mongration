@@ -213,7 +213,7 @@ Migration.prototype.rollback = async function(doneCb) {
                             return cb('[' + step.id + '] failed to remove migration version: ' + err);
                         }
 
-                        if (result.n === 0) {
+                        if (result.deletedCount === 0) {
                             step.status = statuses.rollbackError;
                             return cb('[' + step.id + '] failed to remove migration version: No such version.');
                         }
