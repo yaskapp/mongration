@@ -207,7 +207,7 @@ Migration.prototype.rollback = async function(doneCb) {
         async.series(
             this.steps.map(function(step) {
                 return function(cb) {
-                    this.db.collection(this.collection).remove({ id: step.id }, function(err) {
+                    this.db.collection(this.collection).deleteOne({ id: step.id }, function(err) {
                         if (err) {
                             step.status = statuses.rollbackError;
                             return cb('[' + step.id + '] failed to remove migration version: ' + err);
