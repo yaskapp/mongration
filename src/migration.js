@@ -180,4 +180,46 @@ Migration.prototype.migrate = function(doneCb) {
     }.bind(this));
 };
 
+Migration.prototype.rollback = async function(doneCb) {
+    var callback = function(err) {
+        var resp = this.steps.map(function(step) {
+            return {
+                id: step.id,
+                status: step.status
+            };
+        });
+        this.client.close();
+        doneCb(err, resp);
+    }.bind(this);
+
+    this.migrationFiles.forEach(function(path, index) {
+        var _step = new StepFileReader(path).read().getStep();
+        _step.order = index;
+        _step.status = statuses.pending;
+        this.steps.push(_step);
+    }.bind(this));
+
+    new MongoConnection(this.dbConfig).connect(function(err, db, client) {
+        assert.equal(err, null);
+        this.db = db;
+        this.client = client;
+
+        async.series(
+            this.steps.map(function(step) {
+                return function(cb) {
+                    step.down(this.db, function(err) {
+                        if (err) {
+                            step.status = statuses.rollbackError;
+                            return cb('[' + step.id + '] unable to rollback migration: ' + err);
+                        }
+                        step.status = statuses.rollback;
+                        cb();
+                    }.bind(this));
+                }.bind(this);
+            }.bind(this)),
+            callback.bind(this)
+        );
+    }.bind(this));
+};
+
 module.exports = Migration;
