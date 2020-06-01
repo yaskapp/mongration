@@ -195,7 +195,7 @@ Migration.prototype.rollback = async function(doneCb) {
     this.migrationFiles.forEach(function(path, index) {
         var _step = new StepFileReader(path).read().getStep();
         _step.order = index;
-        _step.status = statuses.pending;
+        _step.status = statuses.ok;
         this.steps.push(_step);
     }.bind(this));
 
@@ -207,13 +207,24 @@ Migration.prototype.rollback = async function(doneCb) {
         async.series(
             this.steps.map(function(step) {
                 return function(cb) {
-                    step.down(this.db, function(err) {
+                    this.db.collection(this.collection).remove({ id: step.id }, function(err) {
                         if (err) {
                             step.status = statuses.rollbackError;
-                            return cb('[' + step.id + '] unable to rollback migration: ' + err);
+                            return cb('[' + step.id + '] failed to remove migration version: ' + err);
                         }
-                        step.status = statuses.rollback;
-                        cb();
+
+                        step.down(this.db, function(err) {
+                                if (err) {
+                                    step.status = statuses.rollbackError;
+                                    return cb('[' + step.id + '] unable to rollback migration: ' + err);
+                                }
+
+                                if (step.status === statuses.ok) {
+                                    step.status = statuses.rollback;
+                                }
+                                cb();
+                            }.bind(this)
+                        );
                     }.bind(this));
                 }.bind(this);
             }.bind(this)),
