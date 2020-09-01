@@ -38,6 +38,7 @@ class Migration {
 
     const errored = steps.find(step => step.status === statuses.error);
     if (errored) {
+      await connection.close();
       return done(`Already migrated: ${errored.error}`, this._formatSteps(steps));
     }
 
@@ -75,6 +76,7 @@ class Migration {
     this.db = await connection.connect();
     const lastStep = await this.db.collection(this.collection).findOne({}, { sort: { order: -1 } });
     if (!lastStep) {
+      await connection.close();
       return done(new Error('Nothing to rollback.'));
     }
 
