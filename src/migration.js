@@ -87,6 +87,8 @@ class Migration {
       return done(new Error(`Step ${step.id} not found.`));
     }
 
+    step.status = statuses.pending;
+
     await this.rollbackStep(step);
     await connection.close();
     done(null, this._formatSteps(steps));
