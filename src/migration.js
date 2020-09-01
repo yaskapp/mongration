@@ -38,7 +38,7 @@ class Migration {
 
     const errored = steps.find(step => step.status === statuses.error);
     if (errored) {
-      return done(errored);
+      return done(`Already migrated: ${errored.error}`, this._formatSteps(steps));
     }
 
     for (let step of steps) {
@@ -61,7 +61,13 @@ class Migration {
       }
     }
     await connection.close();
-    done(null, this._formatSteps(steps));
+
+    const errorStep = steps.find(step => step.error);
+    const error = errorStep ? errorStep.error : null;
+    if (errorStep) {
+      delete errorStep.error;
+    }
+    done(error, this._formatSteps(steps));
   }
 
   async rollback(done) {
@@ -95,13 +101,15 @@ class Migration {
 
     const down = promisify(step.down);
 
-    if (step.status === statuses.ok) {
+    if (step.status === statuses.ok || step.status === statuses.pending) {
       try {
         await down(this.db);
         step.status = statuses.rollback;
-        await this.db.collection(this.collection).remove({ id: step.id });
+        await this.db.collection(this.collection).deleteOne({ id: step.id });
       } catch (err) {
-        step.error = `[${step.id}] failed to remove migration version: ${err}`;
+        step.error = step.status === statuses.rollback ?
+          `[${step.id}] failed to remove migration version: ${err}`:
+          `[${step.id}] unable to rollback migration: ${err}`;
         step.status = statuses.rollbackError;
       }
     }
@@ -109,13 +117,6 @@ class Migration {
 
   _formatSteps(steps) {
     return steps.map(step => {
-      if (step.error) {
-        return {
-          id: step.id,
-          status: step.status,
-          error: step.error
-        };
-      }
       return {
         id: step.id,
         status: step.status

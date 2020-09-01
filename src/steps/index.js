@@ -1,4 +1,4 @@
 module.exports = {
     Reader : require('./step-file-reader'),
-    bVersionCollection : require('./step-version-collection')
+    VersionCollection : require('./step-version-collection')
 }

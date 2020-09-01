@@ -1,5 +1,5 @@
 module.exports = {
     hosts: 'localhost:27017',
-    db: 'mydb',
+    db: 'mongration-test-db',
     migrationCollection: 'mydbversion'
 };
