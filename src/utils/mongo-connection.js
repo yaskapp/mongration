@@ -1,57 +1,57 @@
-'use strict';
+const assert = require('assert');
 
-var assert = require('assert');
+const MongoClient = require('mongodb').MongoClient;
 
-var MongoClient = require('mongodb').MongoClient;
-
-function MongoConnection(config){
-    
-    if(config.mongoUri){
-        this.connectionUri = config.mongoUri;
-    }else{
-        assert.notEqual(config.hosts, null);
-
-        this.hosts = config.hosts;
-        this.db = config.db;
-        this.user = config.user;
-        this.password = config.password;
-        this.replicaSet = config.replicaSet;
-    }
+function MongoConnection(config) {
+  if (config.mongoUri) {
+    this.connectionUri = config.mongoUri;
+  }
+  else {
+    assert.notEqual(config.hosts, null);
+    this.hosts = config.hosts;
+    this.db = config.db;
+    this.user = config.user;
+    this.password = config.password;
+    this.replicaSet = config.replicaSet;
+  }
 }
 
-MongoConnection.prototype.connect = function(cb){
-    MongoClient.connect(this.connectionUri || this.getConnectionUri(), {
-        useNewUrlParser: true,
-        useUnifiedTopology: true
-    }, (err, client) => {
-        if(err) return cb(err);
-        cb(null, client.db(this.db), client);
-    });
-}
+MongoConnection.prototype.connect = async function() {
+  const client = await MongoClient.connect(this.connectionUri || this.getConnectionUri(), {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  });
+  this.client = client;
+  return client.db(this.db);
+};
 
-MongoConnection.prototype.getConnectionUri = function(){
-    var uri = 'mongodb://';
+MongoConnection.prototype.close = async function() {
+  return this.client.close();
+};
 
-    if(this.user){
-        uri += this.user;
+MongoConnection.prototype.getConnectionUri = function() {
+  var uri = 'mongodb://';
 
-        if(this.password){
-            uri += ':' + this.password;
-        }
+  if (this.user) {
+    uri += this.user;
 
-        uri += '@';
-    }
-    uri += this.hosts + '/';
-
-    if(this.db){
-        uri += this.db;
+    if (this.password) {
+      uri += ':' + this.password;
     }
 
-    if(this.replicaSet){
-        uri += '?replicaSet=' + this.replicaSet;
-    }
+    uri += '@';
+  }
+  uri += this.hosts + '/';
 
-    return uri;
-}
+  if (this.db) {
+    uri += this.db;
+  }
+
+  if (this.replicaSet) {
+    uri += '?replicaSet=' + this.replicaSet;
+  }
+
+  return uri;
+};
 
 module.exports = MongoConnection;
