@@ -48,7 +48,9 @@ class Migration {
       }
       const up = promisify(step.up);
       try {
+        console.log(`Running ${step.id}...`);
         await up(this.db);
+        console.log('Done');
         step.status = statuses.ok;
         await this.db.collection(this.collection).insertOne(
           new StepVersionCollection(step.id, step.checksum, step.order, new Date())
