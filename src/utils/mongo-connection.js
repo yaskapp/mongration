@@ -43,7 +43,10 @@ MongoConnection.prototype.getConnectionUri = function() {
   }
   uri += this.hosts + '/';
 
-  if (this.db) {
+  if (this.authDb) {
+    uri += this.authDb;
+  }
+  else if (this.db) {
     uri += this.db;
   }
 
