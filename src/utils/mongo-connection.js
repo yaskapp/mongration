@@ -12,6 +12,7 @@ function MongoConnection(config) {
     this.db = config.db;
     this.user = config.user;
     this.password = config.password;
+    this.authDb = config.authDb || config.db;
     this.replicaSet = config.replicaSet;
   }
 }
@@ -45,9 +46,6 @@ MongoConnection.prototype.getConnectionUri = function() {
 
   if (this.authDb) {
     uri += this.authDb;
-  }
-  else if (this.db) {
-    uri += this.db;
   }
 
   if (this.replicaSet) {
