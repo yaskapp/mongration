@@ -29,12 +29,12 @@ class Migration {
     });
   }
 
-  async migrate(done) {
+  async migrate(updateChecksum, done) {
     const connection = new MongoConnection(this.dbConfig);
     this.db = await connection.connect();
     let steps = this._loadSteps();
 
-    steps = await this._verify(steps);
+    steps = await this._verify(steps, updateChecksum);
 
     const errored = steps.find(step => step.status === statuses.error);
     if (errored) {
@@ -140,11 +140,10 @@ class Migration {
     return steps;
   }
 
-  async _verify(steps) {
+  async _verify(steps, updateChecksum = false) {
     const dbSteps = await this.db.collection(this.collection).find({}).sort({ order: 1 }).toArray();
-    dbSteps.forEach((dbStep, index) => {
+    dbSteps.forEach(async (dbStep, index) => {
       const step = steps[index];
-
       if (!step) {
         return;
       }
@@ -156,9 +155,14 @@ class Migration {
       }
 
       if (dbStep.checksum !== step.checksum) {
-        step.status = statuses.error;
-        step.error = `[${dbStep.id}] was already migrated on [${dbStep.date}] in a different version.`;
-        return;
+        if (!updateChecksum) {
+          step.status = statuses.error;
+          step.error = `[${dbStep.id}] was already migrated on [${dbStep.date}] in a different version.`;
+          return;
+        }
+        await this.db.collection(this.collection).updateOne(
+        { _id: dbStep._id }, { $set: { checksum: step.checksum }}
+        );
       }
 
       steps[index].status = statuses.skipped;
